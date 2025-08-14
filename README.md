@@ -2,6 +2,8 @@
 
 A modern web-based IDE for writing, compiling, and analyzing [Huff](https://huff.sh) smart contracts. Built on top of [huff-neo](https://github.com/cakevm/huff-neo), a high-performance Huff compiler written in Rust and compiled to WebAssembly.
 
+This editor uses the [`huff-neo-js`](https://www.npmjs.com/package/huff-neo-js) npm package, which provides the WASM-compiled version of the huff-neo compiler for browser environments.
+
 ## Status
 
 Currently, this serves as showcase for the huff-neo compiler and its features. The editor is in early development and may not be fully functional yet. Contributions are welcome to help improve the editor and add more features.
