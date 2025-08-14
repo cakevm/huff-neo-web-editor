@@ -391,6 +391,12 @@ function App() {
       );
 
       decorationsRef.current = newDecorations;
+
+      // Auto-scroll to the highlighted range
+      editorInstance.revealLineInCenter(startPos.lineNumber);
+      
+      // Optional: Also ensure the specific position is visible
+      editorInstance.revealPositionInCenter(startPos);
     }
   };
 
