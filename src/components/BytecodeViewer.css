@@ -1,0 +1,96 @@
+.bytecode-viewer {
+  position: relative;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.bytecode-segments {
+  background: #2d2d30;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  padding: 12px;
+  word-break: break-all;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.bytecode-segment {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.bytecode-segment.mapped {
+  border-bottom: 1px dotted #007acc;
+}
+
+.bytecode-segment.mapped:hover {
+  background-color: rgba(0, 122, 204, 0.2);
+}
+
+.bytecode-segment.hovered {
+  background-color: rgba(0, 122, 204, 0.3);
+  outline: 1px solid #007acc;
+}
+
+.opcode {
+  color: #b5cea8;
+}
+
+.opcode-push {
+  color: #c586c0;
+  font-weight: bold;
+}
+
+.opcode-push-data {
+  color: #ce9178;
+  background-color: rgba(206, 145, 120, 0.1);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.hover-info {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background: #1e1e1e;
+  border: 1px solid #007acc;
+  border-radius: 4px;
+  padding: 8px;
+  z-index: 1000;
+  min-width: 300px;
+  max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.hover-info-header {
+  font-weight: bold;
+  color: #007acc;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.hover-info-content {
+  font-size: 12px;
+  color: #cccccc;
+}
+
+.hover-info-content > div {
+  margin: 4px 0;
+}
+
+.source-preview {
+  margin-top: 8px;
+  padding: 6px;
+  background: #2d2d30;
+  border: 1px solid #3e3e42;
+  border-radius: 3px;
+  color: #9cdcfe;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 100px;
+  overflow-y: auto;
+}

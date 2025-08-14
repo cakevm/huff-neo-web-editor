@@ -1,0 +1,9 @@
+dist
+node_modules
+*.min.js
+*.min.css
+coverage
+public
+.git
+package-lock.json
+*.md
