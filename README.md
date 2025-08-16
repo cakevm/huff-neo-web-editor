@@ -4,9 +4,11 @@ A modern web-based IDE for writing, compiling, and analyzing [Huff](https://huff
 
 This editor uses the [`huff-neo-js`](https://www.npmjs.com/package/huff-neo-js) npm package, which provides the WASM-compiled version of the huff-neo compiler for browser environments.
 
+### A demo can be found here: https://cakevm.github.io/huff-neo-web-editor/
+
 ## Status
 
-Currently, this serves as showcase for the huff-neo compiler and its features. The editor is in early development and may not be fully functional yet. Contributions are welcome to help improve the editor and add more features.
+Currently, this serves as showcase for the WASM version of the huff-neo compiler and its features. The editor is in early development and may not be fully functional yet. Contributions are welcome to help improve the editor and add more features.
 
 ## Features
 

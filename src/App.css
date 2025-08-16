@@ -61,6 +61,42 @@
   cursor: not-allowed;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auto-compile-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #3c3c3c;
+  color: #cccccc;
+  border: 1px solid #555;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auto-compile-toggle:hover {
+  background: #4a4a4a;
+  border-color: #666;
+}
+
+.auto-compile-toggle.active {
+  background: #0e7009;
+  border-color: #16a10b;
+  color: white;
+}
+
+.auto-compile-toggle.active:hover {
+  background: #0a5907;
+}
+
 .main-content {
   flex: 1;
   height: calc(100vh - 48px);

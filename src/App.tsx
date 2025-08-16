@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import { Allotment } from 'allotment';
 import 'allotment/dist/style.css';
 import { FileTree, FileNode } from './components/FileTree';
 import { BytecodeViewer } from './components/BytecodeViewer';
-import { huffCompiler, CompileResult, SourceMapEntry } from './compiler/huffCompiler';
+import { huffCompiler, CompileResult, InternalSourceMapEntry } from './compiler/huffCompiler';
 import { huffLanguage, huffTheme } from './huffLanguage';
-import { Play, AlertCircle, Info, FileText, Binary } from 'lucide-react';
+import { Play, AlertCircle, Info, FileText, Binary, Zap, ZapOff } from 'lucide-react';
 import './App.css';
 
 // Sample files for initial state
@@ -140,6 +140,7 @@ function App() {
     null
   );
   const [showRuntime, setShowRuntime] = useState(true);
+  const [autoCompile, setAutoCompile] = useState(true);
   const decorationsRef = useRef<string[]>([]);
 
   // Initialize compiler
@@ -149,16 +150,35 @@ function App() {
     });
   }, []);
 
-  // Load initial file content
+  // Load initial file content and compile on load
   useEffect(() => {
     if (selectedFile) {
       const file = findFileById(files, selectedFile);
       if (file && file.type === 'file') {
         setCurrentContent(file.content || '');
+        // Auto-compile on file load (only if autoCompile is enabled)
+        if (autoCompile && file.content) {
+          handleCompileContent(file.content, file.name);
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFile]);
+
+  // Auto-compile on content change with debounce (only if autoCompile is enabled)
+  useEffect(() => {
+    if (!autoCompile || !currentContent || !selectedFile) return;
+
+    const file = findFileById(files, selectedFile);
+    if (!file || file.type !== 'file') return;
+
+    const timeoutId = window.setTimeout(() => {
+      handleCompileContent(currentContent, file.name);
+    }, 300); // 300ms debounce for faster updates
+
+    return () => window.clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentContent, autoCompile]);
 
   const findFileById = (nodes: FileNode[], id: string): FileNode | null => {
     for (const node of nodes) {
@@ -199,8 +219,8 @@ function App() {
 
   // Helper function to reconstruct bytecode map from constructor and runtime maps
   const reconstructBytecodeMap = (
-    constructorMap?: SourceMapEntry[],
-    runtimeMap?: SourceMapEntry[],
+    constructorMap?: InternalSourceMapEntry[],
+    runtimeMap?: InternalSourceMapEntry[],
     constructorLength?: number
   ) => {
     if (!constructorMap && !runtimeMap) return undefined;
@@ -227,13 +247,15 @@ function App() {
     return result.length > 0 ? result : undefined;
   };
 
-  const handleCompile = async () => {
-    setIsCompiling(true);
-    const file = findFileById(files, selectedFile || '');
-    const fileName = file?.name || 'main.huff';
+  const handleCompileContent = async (content: string, fileName: string) => {
+    if (!content.trim()) {
+      setCompileResult(null);
+      return;
+    }
 
+    setIsCompiling(true);
     try {
-      const result = await huffCompiler.compile(currentContent, fileName);
+      const result = await huffCompiler.compile(content, fileName);
       setCompileResult(result);
     } catch (error) {
       console.error('Compilation error:', error);
@@ -244,6 +266,12 @@ function App() {
     } finally {
       setIsCompiling(false);
     }
+  };
+
+  const handleCompile = async () => {
+    const file = findFileById(files, selectedFile || '');
+    const fileName = file?.name || 'main.huff';
+    await handleCompileContent(currentContent, fileName);
   };
 
   const handleFileCreate = (parentId: string | null, name: string, type: 'file' | 'folder') => {
@@ -353,6 +381,27 @@ function App() {
     });
   };
 
+  // Memoize the current source map to prevent unnecessary re-renders
+  const currentSourceMap = useMemo(() => {
+    if (!compileResult?.success) return undefined;
+
+    return showRuntime
+      ? compileResult.runtime_map
+      : reconstructBytecodeMap(
+          compileResult.constructor_map,
+          compileResult.runtime_map,
+          compileResult.bytecode && compileResult.runtime
+            ? compileResult.bytecode.length - compileResult.runtime.length
+            : 0
+        );
+  }, [compileResult, showRuntime]);
+
+  // Memoize the current bytecode to prevent unnecessary re-renders
+  const currentBytecode = useMemo(() => {
+    if (!compileResult?.success) return '';
+    return (showRuntime ? compileResult.runtime : compileResult.bytecode) || '';
+  }, [compileResult, showRuntime]);
+
   const handleBytecodeHover = (sourceStart: number | null, sourceEnd: number | null) => {
     if (!editorInstance) return;
 
@@ -409,13 +458,23 @@ function App() {
         </div>
         <div className="header-right">
           <button
-            className="compile-btn"
-            onClick={handleCompile}
-            disabled={isCompiling || !selectedFile}
+            className={`auto-compile-toggle ${autoCompile ? 'active' : ''}`}
+            onClick={() => setAutoCompile(!autoCompile)}
+            title={autoCompile ? 'Disable auto-compilation' : 'Enable auto-compilation'}
           >
-            <Play size={16} />
-            {isCompiling ? 'Compiling...' : 'Compile'}
+            {autoCompile ? <Zap size={16} /> : <ZapOff size={16} />}
+            Auto
           </button>
+          {!autoCompile && (
+            <button
+              className="compile-btn"
+              onClick={handleCompile}
+              disabled={isCompiling || !selectedFile}
+            >
+              <Play size={16} />
+              {isCompiling ? 'Compiling...' : 'Compile'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -501,67 +560,23 @@ function App() {
                       compileResult.success ? (
                         <>
                           <div className="bytecode-stats">
-                            {(showRuntime ? compileResult.runtime : compileResult.bytecode) && (
+                            {currentBytecode && (
                               <>
-                                <span>
-                                  Size:{' '}
-                                  {((showRuntime ? compileResult.runtime : compileResult.bytecode)
-                                    ?.length || 2 - 2) / 2}{' '}
-                                  bytes
-                                </span>
+                                <span>Size: {(currentBytecode.length || 2 - 2) / 2} bytes</span>
                                 <span>•</span>
-                                <span>
-                                  Length:{' '}
-                                  {((showRuntime ? compileResult.runtime : compileResult.bytecode)
-                                    ?.length || 2) - 2}{' '}
-                                  chars
-                                </span>
-                                {(showRuntime
-                                  ? compileResult.runtime_map
-                                  : reconstructBytecodeMap(
-                                      compileResult.constructor_map,
-                                      compileResult.runtime_map,
-                                      compileResult.bytecode && compileResult.runtime
-                                        ? compileResult.bytecode.length -
-                                            compileResult.runtime.length
-                                        : 0
-                                    )) && (
+                                <span>Length: {(currentBytecode.length || 2) - 2} chars</span>
+                                {currentSourceMap && (
                                   <>
                                     <span>•</span>
-                                    <span>
-                                      Source mappings:{' '}
-                                      {(showRuntime
-                                        ? compileResult.runtime_map
-                                        : reconstructBytecodeMap(
-                                            compileResult.constructor_map,
-                                            compileResult.runtime_map,
-                                            compileResult.bytecode && compileResult.runtime
-                                              ? compileResult.bytecode.length -
-                                                  compileResult.runtime.length
-                                              : 0
-                                          )
-                                      )?.length || 0}
-                                    </span>
+                                    <span>Source mappings: {currentSourceMap.length || 0}</span>
                                   </>
                                 )}
                               </>
                             )}
                           </div>
                           <BytecodeViewer
-                            bytecode={
-                              (showRuntime ? compileResult.runtime : compileResult.bytecode) || ''
-                            }
-                            sourceMap={
-                              showRuntime
-                                ? compileResult.runtime_map
-                                : reconstructBytecodeMap(
-                                    compileResult.constructor_map,
-                                    compileResult.runtime_map,
-                                    compileResult.bytecode && compileResult.runtime
-                                      ? compileResult.bytecode.length - compileResult.runtime.length
-                                      : 0
-                                  )
-                            }
+                            bytecode={currentBytecode}
+                            sourceMap={currentSourceMap}
                             source={currentContent}
                             onHover={handleBytecodeHover}
                           />
@@ -580,7 +595,11 @@ function App() {
                     ) : (
                       <div className="no-output">
                         <Info size={32} />
-                        <p>Press Compile (Cmd+Enter) to generate bytecode</p>
+                        <p>
+                          {autoCompile
+                            ? 'Code automatically compiles as you type'
+                            : 'Press Compile (Cmd+Enter) to generate bytecode'}
+                        </p>
                       </div>
                     )}
                   </div>

@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { SourceMapEntry } from '../compiler/huffCompiler';
+import { InternalSourceMapEntry } from '../compiler/huffCompiler';
 import './BytecodeViewer.css';
 
 interface BytecodeViewerProps {
   bytecode: string;
-  sourceMap?: SourceMapEntry[];
+  sourceMap?: InternalSourceMapEntry[];
   source: string;
   onHover?: (sourceStart: number | null, sourceEnd: number | null) => void;
 }

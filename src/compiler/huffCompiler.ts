@@ -1,21 +1,23 @@
 // Huff Compiler integration using huff-neo-js npm package
-import { compile as wasmCompile, Contract } from 'huff-neo-js';
+import { compile as wasmCompile, CompilerArtifact, SourceMapEntry } from 'huff-neo-js';
 
-export interface SourceMapEntry {
-  byte_offset: number;
-  length: number;
+// Internal source map entry with converted coordinates for BytecodeViewer
+export interface InternalSourceMapEntry {
+  byte_offset: number; // Converted to hex character offset (pc * 2)
+  length: number; // Converted to hex character length (bytecode_length * 2)
   source_start: number;
   source_end: number;
   description?: string;
 }
 
+// Result interface for our app
 export interface CompileResult {
   success: boolean;
   bytecode?: string;
   runtime?: string;
   abi?: unknown;
-  constructor_map?: SourceMapEntry[];
-  runtime_map?: SourceMapEntry[];
+  constructor_map?: InternalSourceMapEntry[];
+  runtime_map?: InternalSourceMapEntry[];
   errors?: string[];
 }
 
@@ -38,16 +40,17 @@ export class HuffCompiler {
     }
 
     try {
-      // Prepare input for the WASM compiler as JSON string
+      // Prepare input for the WASM compiler
+      const filesMap = new Map();
+      filesMap.set(fileName, source);
+
       const input = {
         sources: [fileName],
-        files: {
-          [fileName]: source,
-        },
+        files: filesMap,
         evm_version: 'cancun', // Use latest EVM version
-        construct_args: null,
-        alternative_main: null,
-        alternative_constructor: null,
+        construct_args: undefined,
+        alternative_main: undefined,
+        alternative_constructor: undefined,
       };
 
       // Call the WASM compiler - huff-neo-js expects an object
@@ -63,21 +66,36 @@ export class HuffCompiler {
       // Extract the compiled contract
       const contracts = result.contracts;
       if (contracts) {
-        // The contracts is always a Map from huff-neo-js
-        const contractsMap = contracts as Map<string, Contract>;
+        // Check if contracts is a Map or Record
+        const contractsMap: Map<string, CompilerArtifact> =
+          contracts instanceof Map ? contracts : new Map(Object.entries(contracts));
 
         // Try to find the contract by different possible paths
         const possibleKeys = [fileName, `./${fileName}`, fileName.replace('.huff', '')];
         for (const key of possibleKeys) {
           const contract = contractsMap.get(key);
           if (contract) {
+            // Convert new source map format to our internal format
+            const constructor_map = contract.constructor_map?.map((entry: SourceMapEntry) => ({
+              byte_offset: entry.pc * 2, // Convert byte offset to hex character offset
+              length: entry.bytecode_length * 2, // Convert byte length to hex character length
+              source_start: entry.source_start,
+              source_end: entry.source_start + entry.source_length,
+            }));
+            const runtime_map = contract.runtime_map?.map((entry: SourceMapEntry) => ({
+              byte_offset: entry.pc * 2, // Convert byte offset to hex character offset
+              length: entry.bytecode_length * 2, // Convert byte length to hex character length
+              source_start: entry.source_start,
+              source_end: entry.source_start + entry.source_length,
+            }));
+
             return {
               success: true,
               bytecode: contract.bytecode || contract.runtime || '0x',
               runtime: contract.runtime || contract.bytecode || '0x',
-              abi: contract.abi || [],
-              constructor_map: contract.constructor_map || undefined,
-              runtime_map: contract.runtime_map || undefined,
+              abi: contract.abi || undefined,
+              constructor_map,
+              runtime_map,
             };
           }
         }
@@ -87,13 +105,27 @@ export class HuffCompiler {
           const firstEntry = contractsMap.entries().next().value;
           if (firstEntry) {
             const [, contract] = firstEntry;
+            // Convert new source map format to our internal format
+            const constructor_map = contract.constructor_map?.map((entry: SourceMapEntry) => ({
+              byte_offset: entry.pc * 2, // Convert byte offset to hex character offset
+              length: entry.bytecode_length * 2, // Convert byte length to hex character length
+              source_start: entry.source_start,
+              source_end: entry.source_start + entry.source_length,
+            }));
+            const runtime_map = contract.runtime_map?.map((entry: SourceMapEntry) => ({
+              byte_offset: entry.pc * 2, // Convert byte offset to hex character offset
+              length: entry.bytecode_length * 2, // Convert byte length to hex character length
+              source_start: entry.source_start,
+              source_end: entry.source_start + entry.source_length,
+            }));
+
             return {
               success: true,
               bytecode: contract.bytecode || contract.runtime || '0x',
               runtime: contract.runtime || contract.bytecode || '0x',
-              abi: contract.abi || [],
-              constructor_map: contract.constructor_map || undefined,
-              runtime_map: contract.runtime_map || undefined,
+              abi: contract.abi || undefined,
+              constructor_map,
+              runtime_map,
             };
           }
         }
